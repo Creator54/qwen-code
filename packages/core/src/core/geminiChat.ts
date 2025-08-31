@@ -577,6 +577,30 @@ export class GeminiChat {
       }
       this.history.push(...consolidatedOutputContents);
     }
+    
+    // Save conversation context asynchronously
+    this.saveConversationContext(userInput, consolidatedOutputContents);
+  }
+
+  /**
+   * Saves the conversation context to the context file.
+   * @param userInput The user's input content
+   * @param modelOutput The model's output content
+   */
+  private async saveConversationContext(userInput: Content, modelOutput: Content[]): Promise<void> {
+    try {
+      // Save user input
+      await this.config.getConversationContext().appendToContext(userInput);
+      
+      // Save model output
+      for (const content of modelOutput) {
+        await this.config.getConversationContext().appendToContext(content);
+      }
+    } catch (error) {
+      if (this.config.getDebugMode()) {
+        console.debug('Failed to save conversation context:', error);
+      }
+    }
   }
 
   private isTextContent(

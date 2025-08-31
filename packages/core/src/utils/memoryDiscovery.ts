@@ -300,7 +300,7 @@ function concatenateInstructions(
     .join('\n\n');
 }
 
-/**
+/** 
  * Loads hierarchical QWEN.md files and concatenates their content.
  * This function is intended for use by the server.
  */
@@ -334,28 +334,53 @@ export async function loadServerHierarchicalMemory(
   );
   if (filePaths.length === 0) {
     if (debugMode) logger.debug('No QWEN.md files found in hierarchy.');
-    return { memoryContent: '', fileCount: 0 };
   }
   const contentsWithPaths = await readGeminiMdFiles(
     filePaths,
     debugMode,
     importFormat,
   );
+  
+  // Load conversation context if it exists
+  let conversationContextContent = '';
+  try {
+    const qwenDir = path.join(currentWorkingDirectory, '.qwen');
+    const conversationContextPath = path.join(qwenDir, 'context.md');
+    if (fsSync.existsSync(conversationContextPath)) {
+      const contextContent = await fs.readFile(conversationContextPath, 'utf-8');
+      if (contextContent.trim().length > 0) {
+        conversationContextContent = `
+--- Conversation History Context ---
+${contextContent.trim()}
+--- End of Conversation History Context ---
+`;
+        if (debugMode) {
+          logger.debug(`Loaded conversation context from ${conversationContextPath}, length: ${contextContent.length}`);
+        }
+      } else if (debugMode) {
+        logger.debug(`Conversation context file exists but is empty: ${conversationContextPath}`);
+      }
+    } else if (debugMode) {
+      logger.debug(`No conversation context file found at: ${conversationContextPath}`);
+    }
+  } catch (error) {
+    if (debugMode) {
+      logger.debug('Failed to load conversation context:', error);
+    }
+  }
+  
   // Pass CWD for relative path display in concatenated content
   const combinedInstructions = concatenateInstructions(
     contentsWithPaths,
     currentWorkingDirectory,
   );
+  
+  // Combine regular memory content with conversation context
+  const memoryContent = combinedInstructions + conversationContextContent;
+  
   if (debugMode)
     logger.debug(
-      `Combined instructions length: ${combinedInstructions.length}`,
+      `Server memory load complete. Files: ${contentsWithPaths.length}, Total chars: ${memoryContent.length}`,
     );
-  if (debugMode && combinedInstructions.length > 0)
-    logger.debug(
-      `Combined instructions (snippet): ${combinedInstructions.substring(0, 500)}...`,
-    );
-  return {
-    memoryContent: combinedInstructions,
-    fileCount: contentsWithPaths.length,
-  };
+  return { memoryContent, fileCount: contentsWithPaths.length };
 }

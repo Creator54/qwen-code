@@ -130,6 +130,25 @@ export class GeminiClient {
       this.config.getSessionId(),
     );
     this.chat = await this.startChat();
+    
+    // Load conversation context if it exists
+    try {
+      const conversationContext = this.config.getConversationContext();
+      const contextExists = await conversationContext.contextFileExists();
+      if (contextExists) {
+        const history = await conversationContext.loadContext();
+        if (history.length > 0) {
+          this.setHistory(history);
+          if (this.config.getDebugMode()) {
+            console.debug(`Loaded ${history.length} conversation history items from context file`);
+          }
+        }
+      }
+    } catch (error) {
+      if (this.config.getDebugMode()) {
+        console.debug('Failed to load conversation context:', error);
+      }
+    }
   }
 
   getContentGenerator(): ContentGenerator {

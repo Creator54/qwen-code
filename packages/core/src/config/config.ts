@@ -51,6 +51,7 @@ import { IdeClient } from '../ide/ide-client.js';
 import type { Content } from '@google/genai';
 import { logIdeConnection } from '../telemetry/loggers.js';
 import { IdeConnectionEvent, IdeConnectionType } from '../telemetry/types.js';
+import { ConversationContext } from '../tools/conversationContext.js';
 
 // Re-export OAuth config type
 export type { MCPOAuthConfig };
@@ -304,6 +305,7 @@ export class Config {
   private readonly chatCompression: ChatCompressionSettings | undefined;
   private readonly interactive: boolean;
   private readonly trustedFolder: boolean | undefined;
+  private conversationContext: ConversationContext;
   private initialized: boolean = false;
 
   constructor(params: ConfigParameters) {
@@ -384,6 +386,9 @@ export class Config {
 
     // Web search
     this.tavilyApiKey = params.tavilyApiKey;
+
+    // Initialize conversation context
+    this.conversationContext = new ConversationContext(this.targetDir);
 
     if (params.contextFileName) {
       setGeminiMdFilename(params.contextFileName);
@@ -812,6 +817,10 @@ export class Config {
 
   isInteractive(): boolean {
     return this.interactive;
+  }
+
+  getConversationContext(): ConversationContext {
+    return this.conversationContext;
   }
 
   async getGitService(): Promise<GitService> {
